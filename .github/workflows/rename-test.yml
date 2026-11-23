@@ -1,0 +1,55 @@
+name: Rename test (#1354)
+
+# Builds Search on a GitHub Mac and runs Tests/tab_rename_side.py twice:
+# once with Browser.swift as it was before the fix ("before", expected to
+# fail), once with the fix ("after", expected to pass).
+
+on:
+  push:
+    branches: [ci/pr-check]
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [before, after]
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 3
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+
+      - name: Browser.swift as it was before the fix
+        if: matrix.variant == 'before'
+        run: |
+          # driceroland/Search at the time of the fork, before any change here.
+          BASE=f9d7a747a9802f21e174a4221a8e5c287169530f
+          git fetch --depth 1 origin "$BASE"
+          git checkout "$BASE" -- Sources/Search/Browser.swift
+          git diff --stat HEAD
+
+      - name: Build
+        run: ./build.sh 2>&1 | tee build.log | grep -E "error:|built:" || true
+
+      - name: Check the app was built
+        run: test -d build/Search.app
+
+      - name: Rename test
+        continue-on-error: ${{ matrix.variant == 'before' }}
+        run: python3 Tests/tab_rename_side.py
+
+      - name: Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.variant }}
+          path: build.log
