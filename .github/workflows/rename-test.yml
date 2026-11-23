@@ -31,8 +31,9 @@ jobs:
       - name: Browser.swift as it was before the fix
         if: matrix.variant == 'before'
         run: |
-          BASE=$(git log --format=%H -n 1 --grep='#1354' --invert-grep)
-          echo "base: $BASE"
+          # driceroland/Search at the time of the fork, before any change here.
+          BASE=02cebc5041a1dc8ed6db75ececa4f7e74cdbd395
+          git fetch --depth 1 origin "$BASE"
           git checkout "$BASE" -- Sources/Search/Browser.swift
           git diff --stat HEAD
 
